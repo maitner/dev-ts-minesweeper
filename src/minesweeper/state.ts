@@ -6,7 +6,7 @@ export enum GameState {
     Dead = "dead",
 }
 
-export enum ActionTypes {
+export enum ReducerActionType {
     FieldSweep = "field_sweep",
     FieldFlag = "field_flag",
     Reset = "reset"
@@ -137,7 +137,7 @@ export function getAdjacentFieldIds(sizeX: number ,sizeY: number, id: number){
 
 
 
-type ACTIONTYPE = { type: ActionTypes.FieldSweep, fieldId: number } | { type: ActionTypes.FieldFlag, fieldId: number } | { type: ActionTypes.Reset, }
+type ACTIONTYPE = { type: ReducerActionType.FieldSweep, fieldId: number } | { type: ReducerActionType.FieldFlag, fieldId: number } | { type: ReducerActionType.Reset, }
 
 
 export function reducer( state: GameData, action: ACTIONTYPE ){
@@ -147,7 +147,7 @@ export function reducer( state: GameData, action: ACTIONTYPE ){
 
     switch( action.type ){
         
-        case ActionTypes.FieldSweep:
+        case ReducerActionType.FieldSweep:
             if( state.gameState !== GameState.New && state.gameState !== GameState.Running ){
                 return state;
             }
@@ -173,7 +173,7 @@ export function reducer( state: GameData, action: ACTIONTYPE ){
 
         break;
 
-        case ActionTypes.FieldFlag:
+        case ReducerActionType.FieldFlag:
             if( state.gameState !== GameState.Running ){
                 return state;
             }
@@ -193,7 +193,7 @@ export function reducer( state: GameData, action: ACTIONTYPE ){
 
         break;
 
-        case ActionTypes.Reset:
+        case ReducerActionType.Reset:
             return initialState();
         break;
     }
