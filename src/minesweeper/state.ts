@@ -142,8 +142,7 @@ type ACTIONTYPE = { type: ReducerActionType.FieldSweep, fieldId: number } | { ty
 
 export function reducer( state: GameData, action: ACTIONTYPE ){
 
-    console.log(action);
-
+    //console.log(action);
 
     switch( action.type ){
         
@@ -235,55 +234,104 @@ function reducerFieldSweep(state: GameData, fieldId: number ): GameData{
 }
 
 
-function reducerCleanFieldSweep(state: GameData, fieldId: number ): GameData {
-    
-    if( state.fields[fieldId].sweeped == false && state.fields[fieldId].hasMine == false ){
-        let newState = {
-            ...state,
-            fields: state.fields.map( f => {
-                if( f.id == fieldId ){
-                    return {...f, sweeped: true, hasFlag: false }
-                } else {
-                    return f;
-                }
-            })
-        }
-        
+function reducerCleanFieldSweep(state: GameData, fieldId: number, sweepedFieldIds: number[] = [] ): GameData {
 
-        if( state.fields[fieldId].adjacentMines == 0 ){
-            const {x,y} = getFieldCoordinates( state.sizeX, state.sizeY, fieldId );
-            if( x > 0 ){
-                newState = reducerCleanFieldSweep(newState, getFieldId(state.sizeX, state.sizeY, x-1, y) );
+    let newState = {
+        ...state,
+        fields: state.fields.map( f => {
+            if( f.id == fieldId ){
+                return {...f, sweeped: true, hasFlag: false }
+            } else {
+                return f;
             }
-            if( y > 0 ){
-                newState = reducerCleanFieldSweep(newState, getFieldId(state.sizeX, state.sizeY, x, y-1) );
-            }
-            if( x < state.sizeX - 1){
-                newState = reducerCleanFieldSweep(newState, getFieldId(state.sizeX, state.sizeY, x + 1, y) );
-            }
-            if( y < state.sizeY - 1){
-                newState = reducerCleanFieldSweep(newState, getFieldId(state.sizeX, state.sizeY, x, y+1) );
-            }
-        }
-
-        let unsweepedCount = 0;
-
-        for( let f of newState.fields ){
-            if( !f.sweeped ){
-                unsweepedCount++;
-            }
-        }
-
-        if( unsweepedCount == state.mineCount ){
-            newState = {
-                ...newState,
-                gameState: GameState.Cleared,
-                timeStampEnd: Date.now(),
-            }
-        }
-
-        return newState;
+        })
     }
 
-    return state;
+    /*
+        probably oberserving sweeped flag would be enough to stop recursion
+     */
+    sweepedFieldIds.push(fieldId);
+    
+    newState = reducerCleanFieldSweepCleanAround(newState,fieldId);
+
+    /*
+        check adjacent fields, for 0 adjacent mine fields
+    */
+    if( newState.fields[fieldId].adjacentMines == 0 ){
+        const {x,y} = getFieldCoordinates( newState.sizeX, newState.sizeY, fieldId );
+
+        let adjFieldIds: number[] = [];
+
+        if( x > 0 ){
+            adjFieldIds.push( getFieldId(state.sizeX, state.sizeY, x-1, y) );
+        }
+        if( y > 0 ){
+            adjFieldIds.push( getFieldId(state.sizeX, state.sizeY, x, y-1) );
+        }
+        if( x < state.sizeX - 1){
+            adjFieldIds.push( getFieldId(state.sizeX, state.sizeY, x + 1, y) );
+        }
+        if( y < state.sizeY - 1){
+            adjFieldIds.push( getFieldId(state.sizeX, state.sizeY, x, y+1) );
+        }
+
+        for(let adjFieldId of adjFieldIds){
+            if( !sweepedFieldIds.includes(adjFieldId) && newState.fields[adjFieldId].adjacentMines == 0 ){
+                newState = reducerCleanFieldSweep(newState,adjFieldId,sweepedFieldIds);
+            }
+        }
+    }
+
+
+    let unsweepedCount = 0;
+
+    for( let f of newState.fields ){
+        if( !f.sweeped ){
+            unsweepedCount++;
+        }
+    }
+
+    if( unsweepedCount == state.mineCount ){
+        newState = {
+            ...newState,
+            gameState: GameState.Cleared,
+            timeStampEnd: Date.now(),
+        }
+    }
+
+    return newState;
+}
+
+
+function reducerCleanFieldSweepCleanAround(state: GameData, fieldId: number ): GameData {
+    let newState = {...state};
+
+    if( state.fields[fieldId].adjacentMines == 0 ){
+        const {x,y} = getFieldCoordinates( state.sizeX, state.sizeY, fieldId );
+
+        for( let ix = x-1; ix <= x+1; ix++ ){
+            for( let iy = y-1; iy <= y+1; iy++ ){
+                if( ix >= 0 && ix < state.sizeX && iy >= 0 && iy < state.sizeY ){
+                    let revealId = getFieldId(state.sizeX, state.sizeY, ix, iy)
+                    
+                    if( newState.fields[revealId].adjacentMines > 0 ){
+                        newState = {
+                            ...newState,
+                            fields: newState.fields.map( f => {
+                                if( f.id == revealId ){
+                                    return {...f, sweeped: true, hasFlag: false }
+                                } else {
+                                    return f;
+                                }
+                            })
+                        }
+                    }
+
+                }
+            }
+        }    
+    }
+
+
+    return newState;
 }
